@@ -201,16 +201,27 @@ int main(){
 			
 			new_scan = true;
 			// TODO: (Filter scan using voxel filter)
+			pcl::VoxelGrid<PointT> vg;
+			pcl::PointCloud<PointT>::Ptr filteredScan(new pcl::PointCloud<PointT>);
+			vg.setInputCloud(scanCloud);
+			vg.setLeafSize(0.2f, 0.2f, 0.2f);
+			vg.filter(*filteredScan);
 
 			// TODO: Find pose transform by using ICP or NDT matching
+			pcl::IterativeClosestPoint<PointT, PointT> icp;
+			icp.setInputSource(filteredScan);
+			icp.setInputTarget(mapCloud);
+			Eigen::Matrix4f init_guess = transform3D(pose.rotation.yaw, pose.rotation.pitch, pose.rotation.roll, pose.position.x, pose.position.y, pose.position.z).cast<float>();
+			pcl::PointCloud<PointT>::Ptr aligned(new pcl::PointCloud<PointT>);
+			icp.align(*aligned, init_guess);
+			Eigen::Matrix4f transformation = icp.getFinalTransformation();
 			//pose = ....
+			pose = getPose(transformation.cast<double>());
 
 			// TODO: Transform scan so it aligns with ego's actual pose and render that scan
-
 			viewer->removePointCloud("scan");
 			// TODO: Change `scanCloud` below to your transformed scan
-			renderPointCloud(viewer, scanCloud, "scan", Color(1,0,0) );
-
+			renderPointCloud(viewer, aligned, "scan", Color(1,0,0) );
 			viewer->removeAllShapes();
 			drawCar(pose, 1,  Color(0,1,0), 0.35, viewer);
           
